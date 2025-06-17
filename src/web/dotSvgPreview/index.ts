@@ -9,6 +9,7 @@ import { MediaPreview, PreviewState, reopenAsText } from "../mediaPreview";
 import { escapeAttribute, getNonce } from "../util/dom";
 import { SizeStatusBarEntry } from "./sizeStatusBarEntry";
 import { Scale, ZoomStatusBarEntry } from "./zoomStatusBarEntry";
+import type { WebviewProps } from "./webview/props";
 
 export class DotSvgPreviewManager implements vscode.CustomReadonlyEditorProvider {
   public static readonly viewType = "dotPreview.svgPreview";
@@ -191,8 +192,8 @@ class DotSvgPreview extends MediaPreview {
 
   protected override async getWebviewContents(): Promise<string> {
     const version = Date.now().toString();
-    const settings = {
-      src: await this.getResourcePath(this._webviewEditor, this._resource, version),
+    const webviewProps: WebviewProps = {
+      resourcePath: await this.getResourcePath(this._webviewEditor, this._resource, version),
     };
 
     const nonce = getNonce();
@@ -210,11 +211,11 @@ class DotSvgPreview extends MediaPreview {
 	<title>DOT Preview</title>
 
 	<link rel="stylesheet" href="${escapeAttribute(
-    this.extensionResource("dist", "web", "dotSvgPreview", "webview", "preview.css"),
+    this.extensionResource("dist", "web", "dotSvgPreview", "webview", "main.css"),
   )}" type="text/css" media="screen" nonce="${nonce}">
 
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${cspSource}; connect-src ${cspSource}; script-src 'nonce-${nonce}'; style-src ${cspSource} 'nonce-${nonce}';">
-	<meta id="preview-settings" data-settings="${escapeAttribute(JSON.stringify(settings))}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: ${cspSource}; connect-src ${cspSource}; script-src 'nonce-${nonce}' 'wasm-unsafe-eval'; style-src ${cspSource} 'nonce-${nonce}';">
+	<meta id="webview-props" data-props="${escapeAttribute(JSON.stringify(webviewProps))}">
 </head>
 <body class="loading" data-vscode-context='{ "preventDefaultContextMenuItems": true }'>
 	<div class="loading-indicator"></div>
@@ -223,7 +224,7 @@ class DotSvgPreview extends MediaPreview {
   </div>
 
 	<script src="${escapeAttribute(
-    this.extensionResource("dist", "web", "dotSvgPreview", "webview", "preview.js"),
+    this.extensionResource("dist", "web", "dotSvgPreview", "webview", "main.js"),
   )}" nonce="${nonce}"></script>
 </body>
 </html>`;

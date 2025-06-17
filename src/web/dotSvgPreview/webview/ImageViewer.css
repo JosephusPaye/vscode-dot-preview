@@ -1,0 +1,56 @@
+.image-viewer {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  padding: 0;
+  display: flex;
+
+  &:focus {
+    outline: none !important;
+  }
+
+  &.ready {
+    &.zoom-in {
+      cursor: zoom-in;
+    }
+
+    &.zoom-out {
+      cursor: zoom-out;
+    }
+  }
+
+  &.error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .image-load-error {
+      display: block;
+    }
+  }
+
+  img {
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    background-position: 0 0, 8px 8px;
+    background-size: 16px 16px;
+    border: 1px solid var(--vscode-imagePreview-border);
+    margin: auto;
+
+    &.pixelated {
+      image-rendering: pixelated;
+    }
+
+    &.scale-to-fit {
+      max-width: calc(100% - 20px);
+      max-height: calc(100% - 20px);
+      object-fit: contain;
+    }
+  }
+
+  .image-load-error {
+    margin: 1em;
+    display: none;
+  }
+}

@@ -5,12 +5,15 @@
 }
 
 html,
-body {
+body,
+#app {
   width: 100%;
   height: 100%;
 }
 
 body {
+  padding: 5px 0 0 10px;
+
   &:focus {
     outline: none !important;
     -webkit-user-select: none;
@@ -56,4 +59,14 @@ body {
 
 .vscode-high-contrast .loading-indicator {
   background-image: url("./loading-hc.svg");
+}
+
+pre {
+  position: fixed;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  height: 100px;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.8);
 }

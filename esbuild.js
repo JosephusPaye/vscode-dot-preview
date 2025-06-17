@@ -58,8 +58,7 @@ async function main() {
   const ctx = await esbuild.context({
     entryPoints: [
       "src/web/extension.ts",
-      "src/web/dotSvgPreview/webview/preview.ts",
-      "src/web/dotSvgPreview/webview/preview.css",
+      "src/web/dotSvgPreview/webview/main.tsx",
       "src/web/test/suite/extensionTests.ts",
     ],
     bundle: true,
@@ -78,6 +77,7 @@ async function main() {
     loader: {
       ".svg": "dataurl",
     },
+    jsx: "automatic",
     plugins: [
       polyfill.NodeGlobalsPolyfillPlugin({
         process: true,

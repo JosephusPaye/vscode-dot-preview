@@ -186,6 +186,13 @@ class DotSvgPreview extends MediaPreview {
     }
   }
 
+  public copySourceText() {
+    if (this.previewState === PreviewState.Active) {
+      this._webviewEditor.reveal();
+      this._webviewEditor.webview.postMessage({ type: "copySourceText" });
+    }
+  }
+
   protected override updateState() {
     super.updateState();
 
@@ -322,6 +329,12 @@ export function registerDotSvgPreviewSupport(context: vscode.ExtensionContext): 
   disposables.push(
     vscode.commands.registerCommand("dotSvgPreview.copyImage", () => {
       previewManager.activePreview?.copyImage();
+    }),
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand("dotSvgPreview.copySourceText", () => {
+      previewManager.activePreview?.copySourceText();
     }),
   );
 

@@ -7,7 +7,8 @@ import { getVsCodeApi } from "./vscode";
 
 interface ImageViewerProps {
   layout: Layout;
-  src: string;
+  srcUrl: string;
+  srcText: string;
 }
 
 interface ImageViewerState {
@@ -331,6 +332,28 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
     }
   };
 
+  private copySourceText = async (retries = 5) => {
+    if (!document.hasFocus() && retries > 0) {
+      // copySourceText() is called at the same time as webview.reveal, which means this function is running whilst the webview is gaining focus.
+      // Since navigator.clipboard.write requires the document to be focused, we need to wait for focus.
+      // We cannot use a listener, as there is a high chance the focus is gained during the setup of the listener resulting in us missing it.
+      setTimeout(() => {
+        this.copySourceText(retries - 1);
+      }, 20);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([this.props.srcText], { type: "text/plain" }),
+        }),
+      ]);
+    } catch (e) {
+      console.error("Failed to copy source text to clipboard", e);
+    }
+  };
+
   private onMessage = (e: MessageEvent) => {
     if (e.origin !== window.origin) {
       console.error("Dropping message from unknown origin in image preview");
@@ -358,11 +381,15 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
         this.copyImage();
         break;
       }
+      case "copySourceText": {
+        this.copySourceText();
+        break;
+      }
     }
   };
 
   render() {
-    const { src } = this.props;
+    const { srcUrl } = this.props;
     const { isActive, ctrlPressed, altPressed, isLoading, hasError, hasLoadedImage } = this.state;
 
     const containerClasses = [
@@ -385,7 +412,7 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
       >
         <img
           ref={this.imageRef}
-          src={src}
+          src={srcUrl}
           onLoad={this.handleImageLoad}
           onError={this.handleImageError}
           alt="Viewer image"

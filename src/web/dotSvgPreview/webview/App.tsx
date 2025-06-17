@@ -56,7 +56,7 @@ export function App({ webviewProps }: { webviewProps: WebviewProps }) {
       if (rendered.errors.length > 0) {
         console.warn("GraphViz render completed with at least one issue", rendered.errors);
       }
-      return <ImageViewer src={rendered.output.svgDataUrl} layout={rendered.layout} />;
+      return <ImageViewer srcUrl={rendered.output.svgDataUrl} srcText={rendered.input} layout={rendered.layout} />;
     case "failure":
       console.error("GraphViz render failed", rendered.errors);
       return <ErrorOutput heading="GraphViz render failed" errors={rendered.errors} />;

@@ -60,13 +60,3 @@ body {
 .vscode-high-contrast .loading-indicator {
   background-image: url("./loading-hc.svg");
 }
-
-pre {
-  position: fixed;
-  width: 100%;
-  left: 0;
-  bottom: 0;
-  height: 100px;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.8);
-}

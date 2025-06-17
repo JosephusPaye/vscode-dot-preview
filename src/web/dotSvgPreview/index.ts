@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
-import { BinarySizeStatusBarEntry } from "../binarySizeStatusBarEntry";
 import { MediaPreview, PreviewState, reopenAsText } from "../mediaPreview";
 import { escapeAttribute, getNonce } from "../util/dom";
 import { SizeStatusBarEntry } from "./sizeStatusBarEntry";
 import { Scale, ZoomStatusBarEntry } from "./zoomStatusBarEntry";
 import type { WebviewProps } from "./webview/props";
+import { LayoutStatusBarEntry } from "./layoutStatusBarEntry";
+import { Layout } from "./layout";
 
 export class DotSvgPreviewManager implements vscode.CustomReadonlyEditorProvider {
   public static readonly viewType = "dotPreview.svgPreview";
@@ -20,7 +21,7 @@ export class DotSvgPreviewManager implements vscode.CustomReadonlyEditorProvider
   constructor(
     private readonly extensionRoot: vscode.Uri,
     private readonly sizeStatusBarEntry: SizeStatusBarEntry,
-    private readonly binarySizeStatusBarEntry: BinarySizeStatusBarEntry,
+    private readonly layoutStatusBarEntry: LayoutStatusBarEntry,
     private readonly zoomStatusBarEntry: ZoomStatusBarEntry,
   ) {}
 
@@ -34,7 +35,7 @@ export class DotSvgPreviewManager implements vscode.CustomReadonlyEditorProvider
       document.uri,
       webviewEditor,
       this.sizeStatusBarEntry,
-      this.binarySizeStatusBarEntry,
+      this.layoutStatusBarEntry,
       this.zoomStatusBarEntry,
     );
     this._previews.add(preview);
@@ -75,6 +76,7 @@ export class DotSvgPreviewManager implements vscode.CustomReadonlyEditorProvider
 
 class DotSvgPreview extends MediaPreview {
   private _imageSize: string | undefined;
+  private _imageLayout: Layout | undefined;
   private _imageZoom: Scale | undefined;
 
   private readonly emptyPngDataUri =
@@ -85,16 +87,21 @@ class DotSvgPreview extends MediaPreview {
     resource: vscode.Uri,
     webviewEditor: vscode.WebviewPanel,
     private readonly sizeStatusBarEntry: SizeStatusBarEntry,
-    binarySizeStatusBarEntry: BinarySizeStatusBarEntry,
+    private readonly layoutStatusBarEntry: LayoutStatusBarEntry,
     private readonly zoomStatusBarEntry: ZoomStatusBarEntry,
   ) {
-    super(extensionRoot, resource, webviewEditor, binarySizeStatusBarEntry);
+    super(extensionRoot, resource, webviewEditor);
 
     this._register(
       webviewEditor.webview.onDidReceiveMessage((message) => {
         switch (message.type) {
           case "size": {
             this._imageSize = message.value;
+            this.updateState();
+            break;
+          }
+          case "layout": {
+            this._imageLayout = message.value;
             this.updateState();
             break;
           }
@@ -112,9 +119,17 @@ class DotSvgPreview extends MediaPreview {
     );
 
     this._register(
+      layoutStatusBarEntry.onDidChangeLayout((e) => {
+        if (this.previewState === PreviewState.Active) {
+          this._webviewEditor.webview.postMessage({ type: "setLayout", value: e.layout });
+        }
+      }),
+    );
+
+    this._register(
       zoomStatusBarEntry.onDidChangeScale((e) => {
         if (this.previewState === PreviewState.Active) {
-          this._webviewEditor.webview.postMessage({ type: "setScale", scale: e.scale });
+          this._webviewEditor.webview.postMessage({ type: "setScale", value: e.scale });
         }
       }),
     );
@@ -129,6 +144,7 @@ class DotSvgPreview extends MediaPreview {
       webviewEditor.onDidDispose(() => {
         if (this.previewState === PreviewState.Active) {
           this.sizeStatusBarEntry.hide(this);
+          this.layoutStatusBarEntry.hide(this);
           this.zoomStatusBarEntry.hide(this);
         }
         this.previewState = PreviewState.Disposed;
@@ -143,6 +159,7 @@ class DotSvgPreview extends MediaPreview {
   public override dispose(): void {
     super.dispose();
     this.sizeStatusBarEntry.hide(this);
+    this.layoutStatusBarEntry.hide(this);
     this.zoomStatusBarEntry.hide(this);
   }
 
@@ -177,10 +194,14 @@ class DotSvgPreview extends MediaPreview {
     }
 
     if (this._webviewEditor.active) {
+      const defaultLayout = vscode.workspace.getConfiguration("dotPreview").get<Layout>("defaultLayout", "dot");
+
       this.sizeStatusBarEntry.show(this, this._imageSize || "");
+      this.layoutStatusBarEntry.show(this, this._imageLayout ?? defaultLayout);
       this.zoomStatusBarEntry.show(this, this._imageZoom || "fit");
     } else {
       this.sizeStatusBarEntry.hide(this);
+      this.layoutStatusBarEntry.hide(this);
       this.zoomStatusBarEntry.hide(this);
     }
   }
@@ -192,8 +213,10 @@ class DotSvgPreview extends MediaPreview {
 
   protected override async getWebviewContents(): Promise<string> {
     const version = Date.now().toString();
+    const configurations = vscode.workspace.getConfiguration("dotPreview");
     const webviewProps: WebviewProps = {
       resourcePath: await this.getResourcePath(this._webviewEditor, this._resource, version),
+      defaultLayout: configurations.get<Layout>("defaultLayout", "dot"),
     };
 
     const nonce = getNonce();
@@ -219,10 +242,7 @@ class DotSvgPreview extends MediaPreview {
 </head>
 <body class="loading" data-vscode-context='{ "preventDefaultContextMenuItems": true }'>
 	<div class="loading-indicator"></div>
-  <div id="app">
-    <pre id="output" class="output"></pre>
-  </div>
-
+  <div id="app"></div>
 	<script src="${escapeAttribute(
     this.extensionResource("dist", "web", "dotSvgPreview", "webview", "main.js"),
   )}" nonce="${nonce}"></script>
@@ -262,14 +282,14 @@ class DotSvgPreview extends MediaPreview {
   }
 }
 
-export function registerDotSvgPreviewSupport(
-  context: vscode.ExtensionContext,
-  binarySizeStatusBarEntry: BinarySizeStatusBarEntry,
-): vscode.Disposable {
+export function registerDotSvgPreviewSupport(context: vscode.ExtensionContext): vscode.Disposable {
   const disposables: vscode.Disposable[] = [];
 
   const sizeStatusBarEntry = new SizeStatusBarEntry();
   disposables.push(sizeStatusBarEntry);
+
+  const layoutStatusBarEntry = new LayoutStatusBarEntry();
+  disposables.push(layoutStatusBarEntry);
 
   const zoomStatusBarEntry = new ZoomStatusBarEntry();
   disposables.push(zoomStatusBarEntry);
@@ -277,7 +297,7 @@ export function registerDotSvgPreviewSupport(
   const previewManager = new DotSvgPreviewManager(
     context.extensionUri,
     sizeStatusBarEntry,
-    binarySizeStatusBarEntry,
+    layoutStatusBarEntry,
     zoomStatusBarEntry,
   );
 

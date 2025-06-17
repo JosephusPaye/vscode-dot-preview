@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { BinarySizeStatusBarEntry } from "./binarySizeStatusBarEntry";
 import { registerDotSvgPreviewSupport } from "./dotSvgPreview";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -17,10 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(disposable);
 
-  const binarySizeStatusBarEntry = new BinarySizeStatusBarEntry();
-  context.subscriptions.push(binarySizeStatusBarEntry);
-
-  context.subscriptions.push(registerDotSvgPreviewSupport(context, binarySizeStatusBarEntry));
+  context.subscriptions.push(registerDotSvgPreviewSupport(context));
 }
 
 // This method is called when your extension is deactivated

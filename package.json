@@ -23,6 +23,27 @@
   },
   "browser": "./dist/web/extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "DOT Preview",
+      "properties": {
+        "dotPreview.defaultLayout": {
+          "type": "string",
+          "default": "dot",
+          "enum": [
+            "dot",
+            "neato",
+            "fdp",
+            "sfdp",
+            "circo",
+            "twopi",
+            "osage",
+            "patchwork"
+          ],
+          "markdownDescription": "The default layout engine to use for rendering DOT files"
+        }
+      }
+    },
     "customEditors": [
       {
         "viewType": "dotPreview.svgPreview",
@@ -73,12 +94,12 @@
         {
           "command": "dotSvgPreview.zoomIn",
           "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
-          "group": "1_imagePreview"
+          "group": "1_dotPreview"
         },
         {
           "command": "dotSvgPreview.zoomOut",
           "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
-          "group": "1_imagePreview"
+          "group": "1_dotPreview"
         },
         {
           "command": "dotSvgPreview.copyImage",

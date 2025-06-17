@@ -1,5 +1,8 @@
+import { Layout } from "../layout";
+
 export interface WebviewProps {
   resourcePath: string;
+  defaultLayout: Layout;
 }
 
 export function readWebviewProps(): WebviewProps {
@@ -9,6 +12,6 @@ export function readWebviewProps(): WebviewProps {
     return JSON.parse(json) as WebviewProps;
   } catch (e) {
     console.error("Failed to parse webview props", e);
-    return { resourcePath: "" };
+    return { resourcePath: "", defaultLayout: "dot" };
   }
 }

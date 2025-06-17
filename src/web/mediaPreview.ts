@@ -5,7 +5,6 @@
 
 import * as vscode from "vscode";
 import { Utils } from "vscode-uri";
-import { BinarySizeStatusBarEntry } from "./binarySizeStatusBarEntry";
 import { Disposable } from "./util/dispose";
 
 export async function reopenAsText(resource: vscode.Uri, viewColumn: vscode.ViewColumn | undefined): Promise<void> {
@@ -26,7 +25,6 @@ export abstract class MediaPreview extends Disposable {
     extensionRoot: vscode.Uri,
     protected readonly _resource: vscode.Uri,
     protected readonly _webviewEditor: vscode.WebviewPanel,
-    private readonly _binarySizeStatusBarEntry: BinarySizeStatusBarEntry,
   ) {
     super();
 
@@ -72,7 +70,6 @@ export abstract class MediaPreview extends Disposable {
 
   public override dispose() {
     super.dispose();
-    this._binarySizeStatusBarEntry.hide(this);
   }
 
   public get resource() {
@@ -108,9 +105,7 @@ export abstract class MediaPreview extends Disposable {
 
     if (this._webviewEditor.active) {
       this.previewState = PreviewState.Active;
-      this._binarySizeStatusBarEntry.show(this, this._binarySize);
     } else {
-      this._binarySizeStatusBarEntry.hide(this);
       this.previewState = PreviewState.Visible;
     }
   }

@@ -6,7 +6,7 @@
 import * as vscode from "vscode";
 import { PreviewStatusBarEntry as OwnedStatusBarEntry } from "../ownedStatusBarEntry";
 
-const selectZoomLevelCommandId = "_imagePreview.selectZoomLevel";
+const selectZoomLevelCommandId = "dotSvgPreview.selectZoomLevel";
 
 export type Scale = number | "fit";
 
@@ -19,7 +19,7 @@ export class ZoomStatusBarEntry extends OwnedStatusBarEntry {
       "status.imagePreview.zoom",
       vscode.l10n.t("Image Zoom"),
       vscode.StatusBarAlignment.Right,
-      102 /* to the left of editor size entry (101) */,
+      103 /* to the left of layout engine entry (102) */,
     );
 
     this._register(

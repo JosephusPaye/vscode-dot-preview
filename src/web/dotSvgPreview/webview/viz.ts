@@ -1,8 +1,11 @@
 import { instance, RenderError, RenderOptions, Viz } from "@viz-js/viz";
+import { Layout, supportedLayouts } from "../layout";
 
 interface SuccessResult {
   status: "success";
+  input: string;
   output: { [format: string]: string };
+  layout: Layout;
   errors: RenderError[];
 }
 
@@ -36,11 +39,12 @@ export async function renderGraph(data: string, opts?: Omit<RenderOptions, "form
     if (result.status === "success") {
       return {
         ...result,
+        input: data,
         output: {
           ...result.output,
           svgDataUrl: `data:image/svg+xml;base64,${btoa(result.output.svg)}`,
-          input: data,
         },
+        layout: (opts?.engine as Layout | undefined) ?? ("dot" as const),
       };
     }
 
@@ -56,7 +60,13 @@ export async function renderGraph(data: string, opts?: Omit<RenderOptions, "form
   }
 }
 
-export async function fetchAndRenderGraph(url: string, opts?: Omit<RenderOptions, "format">): Promise<RenderResult> {
+const layoutRegex = /@vscode-dot-preview-layout\s+(\w+)/i;
+
+export async function fetchAndRenderGraph(
+  url: string,
+  layout?: { fromState?: string; fromDefault: string },
+  opts?: Omit<RenderOptions, "format" | "engine">,
+): Promise<RenderResult> {
   try {
     if (!url) {
       throw new Error("No URL provided to fetch the graph data from file.");
@@ -72,7 +82,21 @@ export async function fetchAndRenderGraph(url: string, opts?: Omit<RenderOptions
       );
     }
 
-    return renderGraph(await response.text(), opts);
+    const responseText = await response.text();
+
+    let layoutFromFile = responseText.match(layoutRegex)?.[1]?.toLowerCase();
+    if (layoutFromFile && !supportedLayouts.includes(layoutFromFile as Layout)) {
+      console.warn(
+        `Ignoring unsupported layout engine "${layoutFromFile}" specified in the file. Must be one of: ${supportedLayouts.join(
+          ", ",
+        )}`,
+      );
+      layoutFromFile = undefined;
+    }
+
+    const engine = layout?.fromState ?? layoutFromFile ?? layout?.fromDefault ?? "dot";
+
+    return renderGraph(responseText, { ...opts, engine });
   } catch (error) {
     console.error("Error fetching and rendering graph", error);
 

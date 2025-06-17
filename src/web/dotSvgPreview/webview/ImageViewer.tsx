@@ -1,12 +1,13 @@
 import { Component, createRef } from "preact";
 
+import { Layout } from "../layout";
+
 import "./ImageViewer.css";
+import { getVsCodeApi } from "./vscode";
 
 interface ImageViewerProps {
+  layout: Layout;
   src: string;
-  initialScale?: number | "fit";
-  onZoom?: (scale: number | "fit") => void;
-  onSize?: (size: string) => void;
 }
 
 interface ImageViewerState {
@@ -23,55 +24,63 @@ interface ImageViewerState {
 }
 
 const MIN_SCALE = 0.1;
-const MAX_SCALE = 20;
+const MAX_SCALE = 50;
 const PIXELATION_THRESHOLD = 3;
 const SCALE_PINCH_FACTOR = 0.075;
-const zoomLevels = [0.1, 0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3, 5, 7, 10, 15, 20];
-const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+const ZOOM_LEVELS = [0.1, 0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3, 5, 7, 10, 15, 20];
+const IS_MAC = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
 export default class ImageViewer extends Component<ImageViewerProps, ImageViewerState> {
   private containerRef = createRef<HTMLDivElement>();
   private imageRef = createRef<HTMLImageElement>();
+  private vscode = getVsCodeApi();
 
   constructor(props: ImageViewerProps) {
     super(props);
+
+    const initialState = this.vscode.getState();
+
     this.state = {
-      scale: props.initialScale || "fit",
+      scale: initialState?.scale ?? "fit",
+      offsetX: initialState?.offsetX ?? 0,
+      offsetY: initialState?.offsetY ?? 0,
       ctrlPressed: false,
       altPressed: false,
       hasLoadedImage: false,
       consumeClick: true,
-      isActive: false,
+      // Use the last active state if available
+      isActive: window.lastActiveState ?? false,
       isLoading: true,
       hasError: false,
-      offsetX: 0,
-      offsetY: 0,
     };
   }
 
   componentDidMount() {
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
-    window.addEventListener("scroll", this.handleScroll, { passive: true });
+    window.addEventListener("scroll", this.handleWindowScroll, { passive: true });
+    window.addEventListener("message", this.onMessage);
+    document.addEventListener("copy", this.onCopyImage);
+
+    this.updateScale(this.state.scale);
   }
 
   componentWillUnmount() {
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
-    window.removeEventListener("scroll", this.handleScroll);
+    window.removeEventListener("scroll", this.handleWindowScroll);
+    window.removeEventListener("message", this.onMessage);
+    document.removeEventListener("copy", this.onCopyImage);
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.state.hasLoadedImage) return;
 
-    this.setState({
-      ctrlPressed: e.ctrlKey,
-      altPressed: e.altKey,
-    });
+    this.setState({ ctrlPressed: e.ctrlKey, altPressed: e.altKey });
 
-    if (isMac ? e.altKey : e.ctrlKey) {
+    if (IS_MAC ? e.altKey : e.ctrlKey) {
       this.setActive(true);
     }
   };
@@ -79,12 +88,9 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
   private handleKeyUp = (e: KeyboardEvent) => {
     if (!this.state.hasLoadedImage) return;
 
-    this.setState({
-      ctrlPressed: e.ctrlKey,
-      altPressed: e.altKey,
-    });
+    this.setState({ ctrlPressed: e.ctrlKey, altPressed: e.altKey });
 
-    if (!(isMac ? e.altKey : e.ctrlKey)) {
+    if (!(IS_MAC ? e.altKey : e.ctrlKey)) {
       this.setActive(false);
     }
   };
@@ -111,7 +117,7 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
       this.firstZoom();
     }
 
-    if (!(isMac ? this.state.altPressed : this.state.ctrlPressed)) {
+    if (!(IS_MAC ? this.state.altPressed : this.state.ctrlPressed)) {
       this.zoomIn();
     } else {
       this.zoomOut();
@@ -125,7 +131,7 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
 
     if (!this.state.hasLoadedImage) return;
 
-    const isScrollWheelKeyPressed = isMac ? this.state.altPressed : this.state.ctrlPressed;
+    const isScrollWheelKeyPressed = IS_MAC ? this.state.altPressed : this.state.ctrlPressed;
     if (!isScrollWheelKeyPressed && !e.ctrlKey) return;
 
     if (this.state.scale === "fit") {
@@ -134,13 +140,18 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
 
     const delta = e.deltaY > 0 ? 1 : -1;
     const currentScale = typeof this.state.scale === "number" ? this.state.scale : 1;
+
     this.updateScale(currentScale * (1 - delta * SCALE_PINCH_FACTOR));
   };
 
-  private handleScroll = () => {
+  private handleWindowScroll = () => {
     if (!this.state.hasLoadedImage || this.state.scale === "fit") return;
 
-    this.setState({
+    this.setState({ offsetX: window.scrollX, offsetY: window.scrollY });
+
+    this.vscode.setState({
+      layout: this.props.layout,
+      scale: this.state.scale,
       offsetX: window.scrollX,
       offsetY: window.scrollY,
     });
@@ -152,59 +163,74 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
     const image = this.imageRef.current;
     if (!image) return;
 
-    this.setState({
-      hasLoadedImage: true,
-      isLoading: false,
+    this.vscode.postMessage({ type: "size", value: `${image.naturalWidth}x${image.naturalHeight}` });
+
+    this.setState({ hasLoadedImage: true, isLoading: false }, () => {
+      const initialScale = this.state.scale;
+      const initialOffsetX = this.state.offsetX;
+      const initialOffsetY = this.state.offsetY;
+
+      this.updateScale(initialScale);
+
+      // Update scale sets the scroll position to center the image at the given scale,
+      // but we want to restore the initial scroll position to what it was set to before
+      if (initialScale !== "fit") {
+        window.scrollTo(initialOffsetX, initialOffsetY);
+      }
     });
-
-    this.props.onSize?.(`${image.naturalWidth}x${image.naturalHeight}`);
-    this.updateScale(this.state.scale);
-
-    if (this.state.scale !== "fit") {
-      window.scrollTo(this.state.offsetX, this.state.offsetY);
-    }
   };
 
   private handleImageError = () => {
     if (this.state.hasLoadedImage) return;
 
-    this.setState({
-      hasLoadedImage: true,
-      isLoading: false,
-      hasError: true,
-    });
+    this.setState({ hasLoadedImage: true, isLoading: false, hasError: true });
   };
 
   private updateScale = (newScale: number | "fit") => {
     const image = this.imageRef.current;
     const container = this.containerRef.current;
 
-    if (!image || !this.state.hasLoadedImage || !container) return;
+    if (!image || !this.state.hasLoadedImage || !container) {
+      return;
+    }
 
     if (newScale === "fit") {
-      this.setState({ scale: "fit" });
-      this.props.onZoom?.("fit");
+      this.setState({ scale: "fit", offsetX: 0, offsetY: 0 });
+
+      image.classList.add("scale-to-fit");
+      image.classList.remove("pixelated");
+      image.style.zoom = "normal";
+
+      this.vscode.setState(undefined);
+      this.vscode.postMessage({ type: "zoom", value: "fit" });
     } else {
-      const clampedScale = clamp(newScale, MIN_SCALE, MAX_SCALE);
+      const scaleClamped = clamp(newScale, MIN_SCALE, MAX_SCALE);
+      this.setState({ scale: scaleClamped });
+
+      if (scaleClamped >= PIXELATION_THRESHOLD) {
+        image.classList.add("pixelated");
+      } else {
+        image.classList.remove("pixelated");
+      }
 
       const dx = (window.scrollX + container.clientWidth / 2) / container.scrollWidth;
       const dy = (window.scrollY + container.clientHeight / 2) / container.scrollHeight;
 
-      this.setState({ scale: clampedScale });
+      image.classList.remove("scale-to-fit");
+      image.style.zoom = scaleClamped.toString();
 
-      // Update scroll position after state change
-      setTimeout(() => {
-        const newScrollX = container.scrollWidth * dx - container.clientWidth / 2;
-        const newScrollY = container.scrollHeight * dy - container.clientHeight / 2;
-        window.scrollTo(newScrollX, newScrollY);
+      const newScrollX = container.scrollWidth * dx - container.clientWidth / 2;
+      const newScrollY = container.scrollHeight * dy - container.clientHeight / 2;
 
-        this.setState({
-          offsetX: newScrollX,
-          offsetY: newScrollY,
-        });
-      }, 0);
+      window.scrollTo(newScrollX, newScrollY);
 
-      this.props.onZoom?.(clampedScale);
+      this.vscode.setState({
+        layout: this.props.layout,
+        scale: scaleClamped,
+        offsetX: newScrollX,
+        offsetY: newScrollY,
+      });
+      this.vscode.postMessage({ type: "zoom", value: scaleClamped });
     }
   };
 
@@ -228,12 +254,13 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
 
     const currentScale = typeof this.state.scale === "number" ? this.state.scale : 1;
     let i = 0;
-    for (; i < zoomLevels.length; ++i) {
-      if (zoomLevels[i] > currentScale) {
+    for (; i < ZOOM_LEVELS.length; ++i) {
+      if (ZOOM_LEVELS[i] > currentScale) {
         break;
       }
     }
-    this.updateScale(zoomLevels[i] || MAX_SCALE);
+
+    this.updateScale(ZOOM_LEVELS[i] || MAX_SCALE);
   };
 
   private zoomOut = () => {
@@ -243,39 +270,110 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
     }
 
     const currentScale = typeof this.state.scale === "number" ? this.state.scale : 1;
-    let i = zoomLevels.length - 1;
+    let i = ZOOM_LEVELS.length - 1;
     for (; i >= 0; --i) {
-      if (zoomLevels[i] < currentScale) {
+      if (ZOOM_LEVELS[i] < currentScale) {
         break;
       }
     }
-    this.updateScale(zoomLevels[i] || MIN_SCALE);
+
+    this.updateScale(ZOOM_LEVELS[i] || MIN_SCALE);
+  };
+
+  private onCopyImage = () => {
+    this.copyImage();
+  };
+
+  private copyImage = async (retries = 5) => {
+    if (!document.hasFocus() && retries > 0) {
+      // copyImage() is called at the same time as webview.reveal, which means this function is running whilst the webview is gaining focus.
+      // Since navigator.clipboard.write requires the document to be focused, we need to wait for focus.
+      // We cannot use a listener, as there is a high chance the focus is gained during the setup of the listener resulting in us missing it.
+      setTimeout(() => {
+        this.copyImage(retries - 1);
+      }, 20);
+      return;
+    }
+
+    const image = this.imageRef.current;
+    if (!image || !this.state.hasLoadedImage) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "image/png": new Promise((resolve, reject) => {
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(image, 0, 0);
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  resolve(blob);
+                } else {
+                  reject(new Error("Failed to create blob from canvas"));
+                }
+                canvas.remove();
+              }, "image/png");
+            } else {
+              reject(new Error("Failed to get canvas 2D context for image copy"));
+              canvas.remove();
+            }
+          }),
+        }),
+      ]);
+    } catch (e) {
+      console.error("Failed to copy image to clipboard", e);
+    }
+  };
+
+  private onMessage = (e: MessageEvent) => {
+    if (e.origin !== window.origin) {
+      console.error("Dropping message from unknown origin in image preview");
+      return;
+    }
+
+    switch (e.data.type) {
+      case "setScale": {
+        this.updateScale(e.data.value);
+        break;
+      }
+      case "setActive": {
+        this.setActive(e.data.value);
+        break;
+      }
+      case "zoomIn": {
+        this.zoomIn();
+        break;
+      }
+      case "zoomOut": {
+        this.zoomOut();
+        break;
+      }
+      case "copyImage": {
+        this.copyImage();
+        break;
+      }
+    }
   };
 
   render() {
     const { src } = this.props;
-    const { scale, isActive, ctrlPressed, altPressed, isLoading, hasError, hasLoadedImage } = this.state;
+    const { isActive, ctrlPressed, altPressed, isLoading, hasError, hasLoadedImage } = this.state;
 
     const containerClasses = [
       "image-viewer",
       isLoading && "loading",
       hasError && "error",
       hasLoadedImage && "ready",
-      isActive && (isMac ? altPressed : ctrlPressed) ? "zoom-out" : "zoom-in",
+      isActive && ((IS_MAC ? altPressed : ctrlPressed) ? "zoom-out" : "zoom-in"),
     ]
       .filter(Boolean)
       .join(" ");
-
-    const imageClasses = [
-      scale === "fit" && "scale-to-fit",
-      typeof scale === "number" && scale >= PIXELATION_THRESHOLD && "pixelated",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const imageStyle: any = {
-      zoom: scale === "fit" ? "normal" : scale,
-    };
 
     return (
       <div
@@ -285,27 +383,13 @@ export default class ImageViewer extends Component<ImageViewerProps, ImageViewer
         onClick={this.handleClick}
         onWheel={this.handleWheel}
       >
-        {hasLoadedImage && (
-          <img
-            ref={this.imageRef}
-            src={src}
-            className={imageClasses}
-            style={imageStyle}
-            onLoad={this.handleImageLoad}
-            onError={this.handleImageError}
-            alt="Viewer image"
-          />
-        )}
-        {!hasLoadedImage && !hasError && (
-          <img
-            ref={this.imageRef}
-            src={src}
-            onLoad={this.handleImageLoad}
-            onError={this.handleImageError}
-            style={{ display: "none" }}
-            alt="Viewer image"
-          />
-        )}
+        <img
+          ref={this.imageRef}
+          src={src}
+          onLoad={this.handleImageLoad}
+          onError={this.handleImageError}
+          alt="Viewer image"
+        />
       </div>
     );
   }

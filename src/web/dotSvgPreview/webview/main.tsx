@@ -5,8 +5,6 @@ import { readWebviewProps } from "./props";
 
 import "./main.css";
 
-const vscode = acquireVsCodeApi();
-
 window.addEventListener("load", () => {
   const webviewProps = readWebviewProps();
 

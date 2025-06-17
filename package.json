@@ -99,6 +99,10 @@
         {
           "command": "dotSvgPreview.copyImage",
           "when": "webviewId == 'dotPreview.svgPreview'"
+        },
+        {
+          "command": "dotSvgPreview.reopenAsText",
+          "when": "webviewId == 'dotPreview.svgPreview'"
         }
       ],
       "editor/title": [

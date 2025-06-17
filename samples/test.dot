@@ -1,0 +1,9 @@
+# A graph showing the dependencies in the system
+# Drawn using GraphViz with circo layout
+digraph {
+    A -> B;
+    B -> C;
+    C -> D;
+    D -> A;
+    D -> E -> F -> G -> D;
+}

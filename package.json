@@ -1,0 +1,150 @@
+{
+  "name": "dot-preview",
+  "displayName": "dot-preview",
+  "publisher": "josephuspaye",
+  "description": "Simple and robust preview for GraphViz dot files",
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "capabilities": {
+    "virtualWorkspaces": true,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "browser": "./dist/web/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "dotPreview.svgPreview",
+        "displayName": "DOT preview",
+        "priority": "default",
+        "selector": [
+          {
+            "filenamePattern": "*.{dot,gv}"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "dot-preview.helloWorld",
+        "title": "Hello World"
+      },
+      {
+        "command": "dotSvgPreview.zoomIn",
+        "title": "Zoom In",
+        "category": "DOT Preview"
+      },
+      {
+        "command": "dotSvgPreview.zoomOut",
+        "title": "Zoom Out",
+        "category": "DOT Preview"
+      },
+      {
+        "command": "dotSvgPreview.copyImage",
+        "title": "Copy Image",
+        "category": "DOT Preview"
+      },
+      {
+        "command": "dotSvgPreview.reopenAsPreview",
+        "title": "Reopen as DOT Preview",
+        "category": "DOT Preview",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "dotSvgPreview.reopenAsText",
+        "title": "Reopen as Text",
+        "category": "DOT Preview",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dotSvgPreview.zoomIn",
+          "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
+          "group": "1_imagePreview"
+        },
+        {
+          "command": "dotSvgPreview.zoomOut",
+          "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
+          "group": "1_imagePreview"
+        },
+        {
+          "command": "dotSvgPreview.copyImage",
+          "when": "false"
+        },
+        {
+          "command": "dotSvgPreview.reopenAsPreview",
+          "when": "activeEditor == workbench.editors.files.textFileEditor && (resourceExtname == '.dot' || resourceExtname == '.gv')",
+          "group": "navigation"
+        },
+        {
+          "command": "dotSvgPreview.reopenAsText",
+          "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
+          "group": "navigation"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "dotSvgPreview.copyImage",
+          "when": "webviewId == 'dotPreview.svgPreview'"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "dotSvgPreview.reopenAsPreview",
+          "when": "editorFocus && (resourceExtname == '.dot' || resourceExtname == '.gv')",
+          "group": "navigation"
+        },
+        {
+          "command": "dotSvgPreview.reopenAsText",
+          "when": "activeCustomEditorId == 'dotPreview.svgPreview'",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/extensionTests.js",
+    "pretest": "yarn run compile-web",
+    "vscode:prepublish": "yarn run package-web",
+    "compile-web": "yarn run check-types && yarn run lint && node esbuild.js",
+    "watch-web": "npm-run-all -p watch-web:*",
+    "watch-web:esbuild": "node esbuild.js --watch",
+    "watch-web:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package-web": "yarn run check-types && yarn run lint && node esbuild.js --production",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
+  },
+  "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@types/assert": "^1.5.11",
+    "@types/mocha": "^10.0.10",
+    "@types/vscode": "^1.101.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-web": "^0.0.69",
+    "assert": "^2.1.0",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "glob": "^11.0.2",
+    "mocha": "^11.1.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@viz-js/viz": "^3.14.0"
+  }
+}

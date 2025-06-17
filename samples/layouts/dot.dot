@@ -1,0 +1,8 @@
+# @vscode-dot-preview-layout dot
+digraph {
+    A -> B;
+    B -> C;
+    C -> D;
+    D -> A;
+    D -> E -> F -> G -> D;
+}

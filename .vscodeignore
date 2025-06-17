@@ -4,6 +4,8 @@ src/**
 out/**
 node_modules/**
 dist/**/test/**
+_del/
+samples/
 .gitignore
 vsc-extension-quickstart.md
 webpack.config.js

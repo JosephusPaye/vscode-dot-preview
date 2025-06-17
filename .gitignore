@@ -1,6 +1,7 @@
 out
 dist
 node_modules
+_del/
 .vscode-test-web/
 *.vsix
 .env

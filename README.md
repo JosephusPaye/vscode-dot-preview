@@ -1,65 +1,37 @@
-# dot-preview README
+# DOT Preview
 
-This is the README for your extension "dot-preview". After writing up a brief description, we recommend including the following sections.
+This is a simple and robust extension for previewing GraphViz DOT files (with extension `.dot` or `.gv`) in Visual Studio Code. It is designed to work like the built-in image preview feature, providing a custom view shown by default when opening DOT files.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- Does not depend on any external GraphViz installation
+- Supports both `.dot` and `.gv` file extensions
+- Automatically opens the preview when a DOT file is opened
+- Provides robust live updates when the DOT file is modified in VS Code or externally
+- Provides support for copying the preview image as a PNG (from preview image context menu)
+- Supports <kbd>Ctrl</kbd> + scroll to zoom in and out of the preview
+- Supports scroll and <kbd>Shift</kbd> + scroll to pan the preview
+- Supports click to zoom in, <kbd>Ctrl</kbd> + click (or <kbd>Option</kbd> + click on macOS) to zoom out
+- Supports setting the default GraphViz layout engine globally via preferences, with the ability to override per file using special comments in the DOT file.
+  - Use the special comment `# @vscode-dot-preview-layout <layout>` in a DOT file to set the default layout engine for that file. Overrides the global setting.
+- Supports changing the layout engine used in the preview on the fly (from the status bar). Overrides both the global setting and the file-specific setting.
 
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+You'll need to install an extension that provides syntax highlighting for DOT files if you want syntax highlighting. [Stephanvs.dot](https://marketplace.visualstudio.com/items?itemName=Stephanvs.dot) is a simple option that doesn't clash with this extension.
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- `dotPreview.defaultLayout`: Set the default layout engine for DOT previews. Options include `dot`, `neato`, `fdp`, `sfdp`, `twopi`, and `circo`. Defaults to `dot`.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+None.
 
 ## Release Notes
 
 Users appreciate release notes as you update your extension.
 
-### 1.0.0
+### 0.0.1
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release.

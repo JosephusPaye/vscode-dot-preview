@@ -30,8 +30,4 @@ None.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
-### 0.0.1
-
-Initial release.
+See [CHANGELOG.md](CHANGELOG.md) for details on the latest changes.

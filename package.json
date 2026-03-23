@@ -1,9 +1,9 @@
 {
   "name": "dot-preview",
-  "displayName": "dot-preview",
+  "displayName": "DOT Preview",
   "publisher": "josephuspaye",
   "author": "Josephus Paye II",
-  "description": "Simple and robust preview for GraphViz dot files",
+  "description": "Simple and robust preview for GraphViz DOT files",
   "repository": {
     "type": "git",
     "url": "https://github.com/JosephusPaye/vscode-dot-preview.git"

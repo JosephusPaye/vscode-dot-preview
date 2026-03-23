@@ -2,6 +2,10 @@
 
 This is a simple and robust extension for previewing GraphViz DOT files (with extension `.dot` or `.gv`) in Visual Studio Code. It is designed to work like the built-in image preview feature, providing a custom view shown by default when opening DOT files.
 
+## Installation
+
+See [DOT Preview](https://marketplace.visualstudio.com/items?itemName=josephuspaye.dot-preview) on the Visual Studio Marketplace.
+
 ## Features
 
 - Does not depend on any external GraphViz installation
